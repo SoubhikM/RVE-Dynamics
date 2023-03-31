@@ -145,8 +145,8 @@ def psisolver():
 
     x, dx, k, dk, N = grid()
     m, m_e, dt, N_tsteps = VARS()
-    PEC_MRCISD = np.loadtxt(PECFILE)
-    potential_i = lambda x: csaps(PEC_MRCISD[:, 0], PEC_MRCISD[:, 1], x, smooth=0.999999)
+    PEC = np.loadtxt(PECFILE)
+    potential_i = lambda x: csaps(PEC[:, 0], PEC[:, 1], x, smooth=0.999999)
 
     print('Solving SE...')
     solver = FGHEVEN(x, potential_i(x)-potential_i(x).min(), m)
@@ -460,10 +460,11 @@ if __name__ == '__main__':
 
         plt.figure(figsize=(6, 4))
         plt.plot((np.array(raw_Ekin))/EV_TO_HARTREE, sigma_flat_array[i*len(raw_Ekin):(i+1)*len(raw_Ekin):1],
-                 '.-r',label = r'$v_i=%s \rightarrow v_f=%s$'%(initial, int(final_vf[i])))
+                 '-',color = 'indigo', label = r'$v_i=%s \rightarrow v_f=%s$'%(initial, int(final_vf[i])))
         plt.legend(loc = 'upper right', fontsize = 12)
         plt.xlim(1.0, 5.0)
-        plt.xlabel('Incident electron energy (eV)', fontsize = 14)
+        plt.xlabel('\n Incident electron energy (eV)', fontsize = 14)
+        plt.ylabel('$\sigma(E)$ in a.u. \n', fontsize = 14)
 
         image_path = os.path.join(pathout, 'N2_RVE_spectrum_%s-%s.png')
         image_name = image_path%(int(initial),int(final_vf[i]))
