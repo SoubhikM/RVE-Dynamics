@@ -13,7 +13,7 @@
 
 > The cross-section spectrum is calculated from T-matrix defined as a Fourier transformed cross correlation function.
 
-### $\hat{T}_{v_f\leftarrow v_i}(E)=-\frac{i}{\hbar}\int _{0}^{\infty}e^{i\frac{Et}{\hbar}}\left \langle \phi_{v_f}| e^{-i\frac{\hat{H}t}{\hbar}}|\phi_{v_i}\right \rangle dE$
+### $\hat{T}_{v_f\leftarrow v_i}(E)=-\frac{i}{\hbar}\int_{0}^{\infty}e^{i\frac{Et}{\hbar}}\left \langle \phi_{v_f}| e^{-i\frac{\hat{H}t}{\hbar}}|\phi_{v_i}\right \rangle dE$
 
 >> The cross-section spectrum $\sigma(E)$ subsequently is evaluated as follwoing
 
