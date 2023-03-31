@@ -17,6 +17,7 @@ from joblib import Parallel, delayed
 import timeit
 from alive_progress import alive_bar
 import _rve_parameters
+import pandas as pd
 
 pathout = _rve_parameters.pathout
 PECFILE = _rve_parameters.PECFILE
@@ -26,6 +27,8 @@ HBAR = 1.0
 ANG_TO_BOHR = 1.8897259886
 EV_TO_HARTREE = 1 / 27.21138602
 AU_TO_FS = 0.02418884254
+Mp_TO_Me = 1836.15267343
+
 t_max = _rve_parameters.t_max #fs
 t_max /= AU_TO_FS
 
@@ -46,8 +49,8 @@ def VARS():
         Number of time steps for the simulation.
     '''
 
-    m1= _rve_parameters.m_nuclei1 * 1836.15
-    m2 = _rve_parameters.m_nuclei2 * 1836.15
+    m1= _rve_parameters.m_nuclei1 * Mp_TO_Me
+    m2 = _rve_parameters.m_nuclei2 * Mp_TO_Me
     m_red = m1*m2/(m1+m2)
     m_e = 1.0 #mass of electron in a.u.
     dt = _rve_parameters.dt # fs
@@ -424,7 +427,7 @@ if __name__ == '__main__':
 
     step = float((max_ekin - min_ekin) / n_ekin)
     raw_Ekin = []
-    for i in range(0, n_ekin):
+    for i in range(0, n_ekin+1):
         raw_Ekin.append(float(min_ekin + i * step))
 
     '''
@@ -432,36 +435,35 @@ if __name__ == '__main__':
             in [(energy#1, channel no#1), (energy#2, channel no#1)..] format.
     '''
     KE_vf = []
-    final_vf = np.arange(0, 10, 1)
-    n_v_f = len(final_vf)
+    final_vf = np.arange(0, _rve_parameters.n_v_f, 1)
 
-    for i in range(n_v_f):
+    for i in range(_rve_parameters.n_v_f):
         for j in range(len(raw_Ekin)):
             arg1 = raw_Ekin[j]
             arg2 = int(final_vf[i])
             KE_vf.append((arg1, arg2))
 
     '''Call the parallalized function to calculate the cross-section spectrum'''
-    value = gen_sigma_joblib(8, raw_Ekin, KE_vf)
+    value = gen_sigma_joblib(_rve_parameters.nprocs, raw_Ekin, KE_vf)
 
 
     '''Data analysis and plotting'''
     run_str = "".join(str(int(t_max*AU_TO_FS)) + 'fs')
     sigma_flat_array = np.empty(0)
     sigma_total = np.zeros(len(raw_Ekin))
-    for i in range(len(raw_Ekin)*n_v_f):
+    for i in range(len(raw_Ekin)*_rve_parameters.n_v_f):
         sigma_flat_array = np.append(sigma_flat_array, value[i][1])
 
     '''Cross section spectrum data printed to output files, images
-        Initial entry channel is 0'''
-    initial =0
-    for i in range(n_v_f):
+        Initial entry channel is 0 as specified in _rve_parameters.py'''
+    initial = _rve_parameters.n_v_i
+    for i in range(_rve_parameters.n_v_f):
         sigma_total += sigma_flat_array[i*len(raw_Ekin):(i+1)*len(raw_Ekin):1]
 
         plt.figure(figsize=(6, 4))
         plt.plot((np.array(raw_Ekin))/EV_TO_HARTREE, sigma_flat_array[i*len(raw_Ekin):(i+1)*len(raw_Ekin):1],
-                 '-',color = 'indigo', label = r'$v_i=%s \rightarrow v_f=%s$'%(initial, int(final_vf[i])))
-        plt.legend(loc = 'upper right', fontsize = 12)
+                 '.-',color = 'indigo', label = r'$v_i=%s \rightarrow v_f=%s$'%(initial, int(final_vf[i])))
+        plt.legend(loc = 'upper right', fontsize = 16, framealpha = 0.0)
         plt.xlim(1.0, 5.0)
         plt.xlabel('\n Incident electron energy (eV)', fontsize = 14)
         plt.ylabel('$\sigma(E)$ in a.u. \n', fontsize = 14)
@@ -474,21 +476,19 @@ if __name__ == '__main__':
         image_path2 = os.path.join(pathout, 'N2_RVE_spectrum_%s-%s')
         fname = open( image_path2% (initial, int(final_vf[i])), 'w')
 
-        for j in range(n_ekin):
-            print("%12.10f\t%12.10f"%(value[j][0] / EV_TO_HARTREE,
-                  sigma_flat_array[i * len(raw_Ekin):(i + 1) * len(raw_Ekin):1][j]), file=fname)
+        pd.options.display.float_format = '{:15.10f}'.format
+        df = pd.DataFrame({'# Electron energy (eV)': [i/EV_TO_HARTREE for i in raw_Ekin],
+                           'cross-section (a.u.)': sigma_flat_array[i * len(raw_Ekin):(i + 1) * len(raw_Ekin):1] })
+        print(df.to_string(index=False, col_space=20), file=fname)
         fname.close()
 
 
     '''write to an output file: total cross-section: summing all channels'''
-    kin_en = []
-    sigma_e = []
 
     file1 = open(os.path.join(pathout, "N2_RVE_total_cross_%s_%s.dat") % (run_str, 'test'), "w")
-    for i in range(len(raw_Ekin)):
-        kin_en.append(raw_Ekin[i]/EV_TO_HARTREE)
-        sigma_e.append(sigma_total[i])
-        print("%15.12f \t %15.12f"%(value[i][0]/EV_TO_HARTREE, sigma_total[i]), file= file1)
+    df = pd.DataFrame({'# Electron energy (eV)': [i / EV_TO_HARTREE for i in raw_Ekin],
+                       'Total cross-section (a.u.)': sigma_total})
+    print(df.to_string(index=False, col_space=20), file=file1)
     file1.close()
 
 
